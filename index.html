@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Video Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;700&family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ECEEF1; --surface:#FFFFFF; --ink:#16181D; --muted:#5B616C; --line:#D3D8DF;
+  --accent:#F2A93B; --accent-ink:#3A2600; --slate:#1C1F25; --slate-ink:#F2F3F5; --slate-muted:#9AA1AD; --slate-line:#343944;
+  --sel:#FFF4E2; --focus:#2F6BDB;
+  --display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --body:"Onest",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#131519; --surface:#1C1F25; --ink:#ECEEF1; --muted:#A0A7B2; --line:#2F343D;
+    --sel:#2E2415; --slate:#0B0C0E; --slate-line:#262A31; --focus:#6F9BF0;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131519; --surface:#1C1F25; --ink:#ECEEF1; --muted:#A0A7B2; --line:#2F343D;
+  --sel:#2E2415; --slate:#0B0C0E; --slate-line:#262A31; --focus:#6F9BF0;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+img{max-width:100%}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+
+/* hero */
+.hero{padding:56px 0 36px}
+.brand{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--muted);margin-bottom:48px}
+.brand b{font-family:var(--display);font-weight:500;color:var(--ink);letter-spacing:.01em}
+.hero h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,6.4vw,76px);line-height:1.02;letter-spacing:-.02em;margin:0 0 22px;max-width:15ch}
+.hero p.lead{font-size:clamp(17px,2vw,20px);max-width:58ch;margin:0 0 28px;color:var(--ink)}
+.formula{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-family:var(--display);font-size:clamp(13px,1.6vw,15px);font-weight:500}
+.formula span.t{background:var(--surface);border:1px solid var(--line);padding:9px 14px;border-radius:999px}
+.formula span.op{color:var(--muted)}
+.formula span.eq{background:var(--slate);color:var(--slate-ink);padding:9px 14px;border-radius:999px}
+
+/* layout */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:36px;align-items:start;padding-bottom:40px}
+@media (max-width:980px){.grid{grid-template-columns:1fr}}
+
+/* steps */
+.step{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:28px 28px 30px;margin-bottom:18px}
+@media (max-width:560px){.step{padding:22px 18px 24px;border-radius:14px}}
+.step-h{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:baseline;margin-bottom:6px}
+.step-n{font-family:var(--display);font-weight:700;font-size:15px;width:34px;height:34px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;transform:translateY(-3px)}
+.step h2{font-family:var(--display);font-weight:500;font-size:clamp(19px,2.4vw,23px);line-height:1.2;margin:0;letter-spacing:-.01em}
+.step .hint{color:var(--muted);margin:0 0 20px 50px;max-width:62ch;font-size:15px}
+@media (max-width:560px){.step .hint{margin-left:0}}
+.q{margin:22px 0 0}
+.q>.ql{font-weight:600;margin-bottom:10px;display:block}
+.q>.qs{color:var(--muted);font-size:14px;margin:-6px 0 10px}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.chip span{display:inline-block;padding:9px 15px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:15px;transition:background .15s,border-color .15s;cursor:pointer;user-select:none}
+.chip input:checked+span{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
+
+/* option cards */
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.opt{position:relative;display:block;border:1px solid var(--line);border-radius:14px;padding:16px 16px 15px;cursor:pointer;background:var(--surface);transition:border-color .15s,background .15s}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt b{display:block;font-family:var(--display);font-weight:500;font-size:16px;margin-bottom:4px}
+.opt small{display:block;color:var(--muted);font-size:14px;line-height:1.45}
+.opt em{display:block;font-style:normal;font-size:13px;margin-top:10px;color:var(--ink);opacity:.8}
+.opt:has(input:checked){border-color:var(--ink);background:var(--sel);box-shadow:inset 0 0 0 1px var(--ink)}
+.opt:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:2px}
+
+/* duration */
+.dur{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.dur label{font-size:14px;color:var(--muted)}
+.num{width:78px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);text-align:center}
+.durout{font-family:var(--display);font-weight:500;font-size:14px;margin-left:auto;color:var(--muted)}
+
+/* stepper */
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.stepper button{border:0;background:transparent;width:42px;height:40px;font-size:20px;cursor:pointer}
+.stepper button:hover{background:var(--bg)}
+.stepper output{min-width:44px;text-align:center;font-family:var(--display);font-weight:500}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:560px){.row2{grid-template-columns:1fr}}
+
+/* CGI */
+.explain{background:var(--bg);border-radius:14px;padding:20px 22px;margin:4px 0 22px;font-size:15.5px}
+.explain h3{font-family:var(--display);font-weight:500;font-size:17px;margin:0 0 10px}
+.explain p{margin:0 0 10px;max-width:66ch}
+.explain p:last-child{margin-bottom:0}
+.scale{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.scale div{background:var(--surface);border-radius:10px;padding:12px 14px;font-size:14px}
+.scale b{display:block;font-family:var(--display);font-weight:500;font-size:14px;margin-bottom:3px}
+@media (max-width:560px){.scale{grid-template-columns:1fr}}
+.cx{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.cxc{position:relative;display:grid;grid-template-columns:24px 1fr;gap:12px;border:1px solid var(--line);border-radius:14px;padding:15px 16px;cursor:pointer;background:var(--surface);transition:border-color .15s,background .15s}
+.cxc input{appearance:none;-webkit-appearance:none;width:22px;height:22px;border:1.5px solid var(--muted);border-radius:6px;margin:2px 0 0;display:grid;place-items:center;cursor:pointer;background:var(--surface)}
+.cxc input:checked{background:var(--ink);border-color:var(--ink)}
+.cxc input:checked::after{content:"";width:6px;height:11px;border:solid var(--bg);border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.cxc:has(input:checked){border-color:var(--ink);background:var(--sel)}
+.cxc b{display:block;font-weight:600;font-size:15.5px;line-height:1.3;margin-bottom:4px}
+.cxc p{margin:0;font-size:14px;color:var(--muted);line-height:1.45}
+.cxc .ex{margin-top:6px;font-size:13.5px;color:var(--ink)}
+.cxc .why{display:none;margin-top:8px;font-size:13.5px;color:var(--ink);border-top:1px dashed var(--line);padding-top:8px}
+.cxc:has(input:checked) .why{display:block}
+.lvl{display:inline-flex;gap:3px;margin-left:6px;vertical-align:middle}
+.lvl i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.lvl i.on{background:var(--accent)}
+.share{margin-top:18px;padding:16px 18px;border-radius:14px;border:1px dashed var(--ink);display:none}
+.share.show{display:block}
+
+.warn{border-left:4px solid var(--accent);background:var(--sel);border-radius:0 12px 12px 0;padding:14px 18px;margin:0 0 18px}
+.warn b{display:block;font-family:var(--display);font-weight:500;font-size:15.5px;margin-bottom:4px}
+.warn p{margin:0;font-size:14.5px;max-width:66ch}
+.real{margin-top:12px;padding:12px 14px;border:1px solid var(--slate-line);border-radius:12px}
+.real small{display:block;color:var(--slate-muted);font-size:12.5px;line-height:1.4}
+.real b{display:block;font-family:var(--display);font-weight:500;font-size:20px;margin:2px 0}
+.flinks{display:flex;flex-direction:column;gap:6px}
+.flinks a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.must{margin-top:18px;background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:14px 16px}
+.must b{display:block;font-family:var(--display);font-weight:700;font-size:15.5px;margin-bottom:4px}
+.must p{margin:0 0 8px;font-size:13.5px;line-height:1.4}
+.must ol{margin:0;padding-left:20px;font-size:13.5px;line-height:1.5}
+
+@media (max-width:560px){.brand{flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:32px}}
+/* form fields */
+.field{display:block;margin-top:14px}
+.field span{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
+.field input,.field textarea{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:16px}
+.field textarea{min-height:120px;resize:vertical;line-height:1.5}
+.toggle{display:flex;gap:10px;align-items:center;margin-top:14px;cursor:pointer}
+.toggle input{width:20px;height:20px;accent-color:var(--ink)}
+
+/* slate */
+.slate-col{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px)}
+@media (max-width:980px){.slate-col{position:static}}
+.slate{background:var(--slate);color:var(--slate-ink);border-radius:18px;overflow:hidden;border:1px solid var(--slate-line)}
+.clap{height:34px;background:repeating-linear-gradient(-45deg,var(--slate-ink) 0 22px,var(--slate) 22px 44px);transform-origin:0 100%;border-bottom:3px solid var(--slate)}
+.clap.snap{animation:snap .42s cubic-bezier(.3,1.4,.5,1)}
+@keyframes snap{0%{transform:rotate(0)}35%{transform:rotate(-7deg)}100%{transform:rotate(0)}}
+.slate-in{padding:22px 24px 24px}
+.sl-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+.sl-top span{font-size:13px;color:var(--slate-muted)}
+.cur{display:inline-flex;border:1px solid var(--slate-line);border-radius:999px;overflow:hidden}
+.cur button{border:0;background:transparent;color:var(--slate-muted);padding:5px 12px;font-size:13px;cursor:pointer}
+.cur button[aria-pressed="true"]{background:var(--slate-ink);color:var(--slate)}
+.price{font-family:var(--display);font-weight:700;font-size:clamp(38px,5vw,46px);line-height:1;letter-spacing:-.02em;white-space:nowrap}
+.range{margin-top:8px;color:var(--slate-muted);font-size:14.5px}
+.facts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--slate-line);border-bottom:1px solid var(--slate-line);margin:20px 0 18px}
+.facts div{padding:12px 0}
+.facts div:nth-child(odd){border-right:1px solid var(--slate-line);padding-right:12px}
+.facts div:nth-child(even){padding-left:14px}
+.facts div:nth-child(n+3){border-top:1px solid var(--slate-line)}
+.facts b{display:block;font-family:var(--display);font-weight:500;font-size:17px}
+.facts small{color:var(--slate-muted);font-size:12.5px}
+.bars{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px;margin:6px 0 10px}
+.bars i{display:block;height:100%;transition:flex-grow .3s}
+.legend{display:grid;grid-template-columns:1fr;gap:5px;font-size:13px;color:var(--slate-muted)}
+.legend span{display:flex;align-items:center;gap:7px}
+.legend i{width:9px;height:9px;border-radius:2px;flex:none}
+.legend b{color:var(--slate-ink);font-weight:500;margin-left:auto}
+.c-pre{background:#8FB3F5}.c-gen{background:var(--accent)}.c-post{background:#9FD6B5}.c-mgmt{background:#C9A6F0}.c-shoot{background:#F28B82}
+.note{font-size:13px;color:var(--slate-muted);margin:16px 0 0;line-height:1.45}
+.btn{display:flex;width:100%;justify-content:center;align-items:center;gap:8px;border:0;border-radius:12px;padding:14px 16px;font-weight:600;font-size:15.5px;cursor:pointer;text-decoration:none;margin-top:10px}
+.btn-a{background:var(--accent);color:var(--accent-ink)}
+.btn-a:hover{filter:brightness(1.05)}
+.btn-g{background:transparent;color:var(--slate-ink);border:1px solid var(--slate-line)}
+.btn-g:hover{border-color:var(--slate-muted)}
+.copied{font-size:13px;color:var(--accent);text-align:center;margin-top:8px;min-height:18px}
+
+/* detail table */
+.detail{margin-top:18px}
+.detail summary{cursor:pointer;font-weight:600;font-size:15px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+.detail summary::-webkit-details-marker{display:none}
+.detail summary::after{content:"+";font-family:var(--display);font-size:18px}
+.detail[open] summary::after{content:"−"}
+.tbl{margin-top:12px;font-size:13.5px}
+.tbl .sg{font-family:var(--display);font-weight:500;font-size:12.5px;color:var(--slate-muted);margin:14px 0 6px;display:flex;justify-content:space-between}
+.tbl .ln{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:7px 0;border-top:1px solid var(--slate-line)}
+.tbl .ln small{grid-column:1;color:var(--slate-muted);font-size:12.5px;line-height:1.35}
+.tbl .ln b{font-weight:500;white-space:nowrap}
+.tbl .tot{display:flex;justify-content:space-between;font-family:var(--display);font-weight:500;padding:12px 0 0;border-top:2px solid var(--slate-ink);margin-top:10px}
+
+/* mobile bar */
+.mbar{display:none}
+@media (max-width:980px){
+  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--slate);color:var(--slate-ink);padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+  .mbar b{font-family:var(--display);font-weight:700;font-size:22px}
+  .mbar small{display:block;color:var(--slate-muted);font-size:12px}
+  .mbar a{white-space:nowrap;flex:none;background:var(--accent);color:var(--accent-ink);padding:10px 16px;border-radius:10px;font-weight:600;text-decoration:none;font-size:15px}
+  body{padding-bottom:84px}
+}
+
+/* how it works */
+.how{padding:40px 0 20px}
+.how h2,.faq h2{font-family:var(--display);font-weight:500;font-size:clamp(24px,3.4vw,34px);letter-spacing:-.015em;margin:0 0 24px;max-width:22ch;line-height:1.15}
+.stages{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:2px solid var(--ink)}
+@media (max-width:860px){.stages{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.stages{grid-template-columns:1fr}}
+.stg{padding:18px 20px 22px 0}
+.stg h3{font-family:var(--display);font-weight:500;font-size:17px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.stg h3 i{width:10px;height:10px;border-radius:2px}
+.stg .pc{font-size:13px;color:var(--muted);margin-bottom:10px}
+.stg p{margin:0;font-size:15px;max-width:40ch}
+.faq{padding:30px 0 40px}
+.faq details{border-top:1px solid var(--line);padding:16px 0}
+.faq details:last-child{border-bottom:1px solid var(--line)}
+.faq summary{cursor:pointer;font-weight:600;font-size:17px;list-style:none}
+.faq summary::-webkit-details-marker{display:none}
+.faq details p{margin:10px 0 0;max-width:68ch;color:var(--ink)}
+footer{border-top:1px solid var(--line);padding:26px 0 40px;font-size:14px;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+/* studio panel */
+.studio{display:none;background:var(--surface);border:2px dashed var(--accent);border-radius:16px;padding:20px;margin:0 0 30px}
+.studio.show{display:block}
+.studio h3{font-family:var(--display);font-weight:500;margin:0 0 6px;font-size:18px}
+.studio .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:12px}
+.studio label{font-size:13px;color:var(--muted);display:block}
+.studio input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);margin-top:4px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="brand"><span>AI video production</span></div>
+    <h1>How much does your AI video cost</h1>
+    <p class="lead">A minute of AI video can cost $2&nbsp;000 — or $20&nbsp;000. The difference is not the length but the details: how many characters there are, whether your product is on screen, whether the characters speak, how complex the action is. Answer the questions below — the price recalculates instantly.</p>
+    <div class="formula" aria-label="What the price is made of">
+      <span class="t">duration</span><span class="op">×</span><span class="t">quality level</span><span class="op">×</span><span class="t">scene complexity</span><span class="op">+</span><span class="t">sound and graphics</span><span class="op">=</span><span class="eq">estimate</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="grid">
+    <form id="brief" onsubmit="return false">
+
+      <section class="step">
+        <div class="step-h"><div class="step-n">1</div><h2>What kind of video and how long</h2></div>
+        <p class="hint">The goal of the video tells us the level. Duration is the final runtime, not counting versions cut for different platforms.</p>
+        <div class="q">
+          <span class="ql">What is the video for</span>
+          <div class="chips" id="purpose"></div>
+          <div class="warn" id="giftNote" style="margin:14px 0 0;display:none"><b>A greeting where the hero is your own person</b><p>A birthday, an anniversary, a wedding, a corporate greeting from a manager to a colleague. This is not a template video card from an app but a real film scene: the birthday person saves the world, the manager leads the team into space, a couple meets inside their favourite film. In production terms it is cinema: a script, a digital likeness built from photos, costumes, locations, editing and sound. That is why it is priced at the Cinema level.</p><p style="margin-top:8px">We have filled in typical values for a one-minute greeting and ticked "A real person on screen" in step 4. It takes 3 photos of the hero from three angles: front, profile and three-quarter. Good quality, in daylight and without glasses. If the video will be shown publicly, for example at a corporate event, it is better to get the person's consent to use their likeness in advance.</p></div>
+          <div class="warn" id="animNote" style="margin:14px 0 0;display:none"><b>Animation is priced at the cinema level</b><p>In animation everything is invented from scratch: the style, the characters, their costumes, the world. It is harder for AI models to hold a single hand-drawn style than realism, so there are no fewer takes or manual polish than in cinema.</p>
+            <div class="q"><span class="ql">Animation style</span><div class="opts" id="animStyle"></div></div></div>
+          <div class="warn" id="clipNote" style="margin:14px 0 0;display:none"><b>A music video is lip sync</b><p>The hardest part of a music video is making the artist sing convincingly on screen: lips exactly on the beat, live facial expression, emotion. AI handles simple lip sync, but for realistic close-up expressions we film the performer's face (facial performance capture) and transfer it onto the character. Choose the option in step 5, "Hybrid production".</p></div>
+          <div class="warn" id="ipNote" style="margin:14px 0 0;display:none"><b>IP development — from idea to pilot</b><p>IP (intellectual property) is your own story that can be developed into a series, a film or a franchise. We go through the whole development path: idea → logline → synopsis → project bible (world, characters, arcs, season plan) → pilot script → production of the pilot episode. The pilot is the first episode that producers and platforms use to decide whether to greenlight the project. We have filled in values for a 15-minute pilot; adjust them in step 3.</p></div>
+          <div class="warn" id="trailerNote" style="margin:14px 0 0;display:none"><b>A trailer is a separate, difficult task</b><p>A trailer is a preview of a film that often does not exist yet. If there is no film script, we invent the world and the story; if there is one, we write the trailer script from it. Then we develop every character, location and costume. A 2–3 minute trailer can move through 20 or more scenes, and every one has to be staged separately. That is why we have filled in typical values for a trailer; adjust them to your project in step 3.</p></div>
+        </div>
+        <div class="q">
+          <span class="ql">Runtime</span>
+          <div class="chips" id="durChips"></div>
+          <div class="dur">
+            <label for="dMin">or exactly:</label>
+            <input class="num" id="dMin" type="number" min="0" max="60" inputmode="numeric" aria-label="Minutes"> <span>min</span>
+            <input class="num" id="dSec" type="number" min="0" max="59" inputmode="numeric" aria-label="Seconds"> <span>sec</span>
+            <span class="durout" id="durOut"></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="step">
+        <div class="step-h"><div class="step-n">2</div><h2>Quality level</h2></div>
+        <p class="hint">The main price multiplier. The higher the level, the more takes we generate for every shot and the more manual polish it needs.</p>
+        <div class="warn"><b>The calculator quotes the minimum</b><p>We allow a minimum of 12 takes for every 15-second segment — professional production never goes lower. This is a starting point, not the norm: in practice advertising and cinema take 2–3 times more, and the right shot may only come out on the 30th attempt. So the result is a minimum budget, not a final price. We show the realistic budget next to it.</p></div>
+        <div class="opts" id="tiers"></div>
+        <div class="q">
+          <span class="ql">Resolution</span>
+          <div class="opts" id="res"></div>
+        </div>
+      </section>
+
+      <section class="step">
+        <div class="step-h"><div class="step-n">3</div><h2>Script, scenes and world development</h2></div>
+        <p class="hint">Every character, location and costume is a separate piece of development: the look, the details, the lighting, and above all, making sure everything looks the same in every shot.</p>
+        <div class="q">
+          <span class="ql">What are you starting with</span>
+          <p class="qs">In film this is called development — the road from an idea to a finished script</p>
+          <div class="opts" id="script"></div>
+        </div>
+        <div class="q">
+          <span class="ql">Number of scenes</span>
+          <p class="qs">A scene is a new place, time or action. A 30-second commercial usually has 2–4 scenes, a trailer 15–25</p>
+          <div class="stepper" data-key="scenes" data-min="1" data-max="60"><button type="button" aria-label="Fewer">−</button><output></output><button type="button" aria-label="More">+</button></div>
+        </div>
+        <div class="row2">
+          <div class="q">
+            <span class="ql">Main characters</span>
+            <p class="qs">Those who appear more than once</p>
+            <div class="stepper" data-key="characters" data-max="20"><button type="button" aria-label="Fewer">−</button><output></output><button type="button" aria-label="More">+</button></div>
+          </div>
+          <div class="q">
+            <span class="ql">Different locations</span>
+            <p class="qs">Apartment, street, office — each one separately</p>
+            <div class="stepper" data-key="locations" data-max="30"><button type="button" aria-label="Fewer">−</button><output></output><button type="button" aria-label="More">+</button></div>
+          </div>
+        </div>
+        <div class="q">
+          <span class="ql">Costumes and looks</span>
+          <p class="qs">Unique clothing and character looks. 0 if ordinary clothing works without development</p>
+          <div class="stepper" data-key="costumes" data-max="40"><button type="button" aria-label="Fewer">−</button><output></output><button type="button" aria-label="More">+</button></div>
+        </div>
+        <div class="q">
+          <span class="ql">How we approve development</span>
+          <p class="qs">Characters, locations, costumes and style. The more approvals, the longer and more expensive it is: a single costume can take a week if it goes around the revision loop</p>
+          <div class="opts" id="approval"></div>
+        </div>
+      </section>
+
+      <section class="step">
+        <div class="step-h"><div class="step-n">4</div><h2>Complex scenes</h2></div>
+        <p class="hint">The most important step. Tick everything that is present in your idea — this is exactly what separates a $2&nbsp;000 video from a $15&nbsp;000 one.</p>
+        <div class="explain">
+          <h3>What CGI is and what it has to do with AI</h3>
+          <p><strong>CGI</strong> (computer-generated imagery) is anything in the frame created by a computer rather than shot with a camera: explosions in blockbusters, dragons, cities that do not exist. It used to take 3D artists weeks.</p>
+          <p>In AI video the <em>entire</em> frame is computer-generated: the model draws it from scratch from our description. So the question is not "will there be CGI" but <strong>how hard it is for the model to draw it</strong>. The model is like a very talented but unpredictable camera operator: it gets simple things right in ten attempts and complex ones in forty — and then it still needs cleaning up by hand.</p>
+          <div class="scale">
+            <div><b>Simple scene · from 12 takes</b>A landscape, a person walking down the street, a slow camera move, atmospheric shots.</div>
+            <div><b>Complex scene · 25–40 takes or more</b>A fight, a character talking to camera, your product with an exact label, an exact match to your renders.</div>
+          </div>
+        </div>
+        <div class="cx" id="complex"></div>
+        <div class="share" id="shareBox">
+          <span class="ql" style="font-weight:600;display:block;margin-bottom:10px">How much of the video do such scenes take up?</span>
+          <div class="chips" id="share"></div>
+        </div>
+      </section>
+
+      <section class="step">
+        <div class="step-h"><div class="step-n">5</div><h2>Hybrid production: live action</h2></div>
+        <p class="hint">Hybrid production is when AI generation is combined with real footage. For example, a real artist sings inside an AI world, or a real face is transferred onto a generated character. That is how you get realism that pure generation cannot deliver yet.</p>
+        <div class="explain" style="margin-top:0">
+          <h3>What facial performance capture is</h3>
+          <p>Facial performance capture is filming the performer's face with tracking markers or a dedicated camera. The computer reads every movement of the lips, eyebrows and eyes and transfers it onto the character. It is the standard for realistic lip sync in music videos and emotional close-ups.</p>
+          <p>Prices for live action and facial capture are "from" figures. The total depends on the city, the studio, the crew, the equipment and the props; we calculate it after the brief.</p>
+        </div>
+        <div class="opts" id="hybrid"></div>
+        <div class="q" id="daysBox" style="display:none">
+          <span class="ql" id="daysLbl">Shoot days</span>
+          <div class="stepper" data-key="shootDays" data-min="1" data-max="10"><button type="button" aria-label="Fewer">−</button><output></output><button type="button" aria-label="More">+</button></div>
+          <label class="toggle" id="faceStudioBox"><input type="checkbox" id="faceStudio" checked> We rent a studio. Untick this if you have your own space: an office, a recording studio, the artist's home</label>
+        </div>
+      </section>
+
+      <section class="step">
+        <div class="step-h"><div class="step-n">6</div><h2>Sound and graphics</h2></div>
+        <p class="hint">Half of the impression a video makes is sound. Without music and effects even perfect imagery looks like a draft.</p>
+        <div class="q"><span class="ql">Music</span><div class="chips" id="music"></div></div>
+        <div class="q"><span class="ql">Effects and ambience</span><div class="chips" id="sound"></div></div>
+        <div class="q"><span class="ql">Voice-over</span><div class="chips" id="voice"></div></div>
+        <div class="q"><span class="ql">Titles and graphics</span><div class="chips" id="titles"></div></div>
+        <label class="toggle"><input type="checkbox" id="subs"> Subtitles needed</label>
+      </section>
+
+      <section class="step">
+        <div class="step-h"><div class="step-n">7</div><h2>Timeline, platforms, revisions</h2></div>
+        <p class="hint">Two rounds of revisions are already included. Rush and broad usage rights raise the price — that is the industry standard.</p>
+        <div class="q"><span class="ql">Where will it be shown</span><div class="opts" id="usage"></div></div>
+        <div class="q"><span class="ql">Timeline</span><div class="chips" id="rush"></div></div>
+        <div class="row2">
+          <div class="q">
+            <span class="ql">Extra formats</span>
+            <p class="qs">Vertical 9:16, square 1:1 and so on</p>
+            <div class="stepper" data-key="formats" data-max="4"><button type="button" aria-label="Fewer">−</button><output></output><button type="button" aria-label="More">+</button></div>
+          </div>
+          <div class="q">
+            <span class="ql">Extra language versions</span>
+            <p class="qs">Besides the main language</p>
+            <div class="stepper" data-key="langs" data-max="8"><button type="button" aria-label="Fewer">−</button><output></output><button type="button" aria-label="More">+</button></div>
+          </div>
+        </div>
+        <div class="q">
+          <span class="ql">Revision rounds</span>
+          <p class="qs">2 are included in the price. A round is one consolidated list of comments</p>
+          <div class="stepper" data-key="revisions" data-min="2" data-max="6"><button type="button" aria-label="Fewer">−</button><output></output><button type="button" aria-label="More">+</button></div>
+        </div>
+      </section>
+
+      <section class="step">
+        <div class="step-h"><div class="step-n">8</div><h2>Tell us about the idea</h2></div>
+        <p class="hint">Optional, but it helps us come back with an exact estimate faster. The brief is never sent automatically and is stored only in your browser. Click "Copy brief and estimate" and paste the text into a message to us.</p>
+        <label class="field"><span>The idea in two or three sentences</span><textarea id="idea" placeholder="For example: a 30-second video for a new watch collection. The hero wakes up in an empty city, time has stopped, and the watch is the only thing still ticking. The final shot is a packshot of the watch on a wrist."></textarea></label>
+        <label class="field"><span>References</span><input id="refs" placeholder="Links to videos you like in terms of style"></label>
+        <div class="row2">
+          <label class="field"><span>Name and company</span><input id="who" autocomplete="name"></label>
+          <label class="field"><span>How to reach you</span><input id="contact" placeholder="Telegram, WhatsApp or email"></label>
+        </div>
+        <label class="field"><span>When do you need the finished video</span><input id="deadline" type="date"></label>
+        <div class="warn" style="margin:22px 0 0"><b>Last step — don't forget to copy the brief</b><p>Click "Copy brief and estimate" in the price block, then paste the text into a message to us. Without this step your answers never reach us.</p></div>
+      </section>
+    </form>
+
+    <aside class="slate-col" id="estimate" aria-live="polite">
+      <div class="slate">
+        <div class="clap" id="clap" aria-hidden="true"></div>
+        <div class="slate-in">
+          <div class="sl-top"><span>Minimum estimate</span></div>
+          <div class="price" id="price">—</div>
+          <div class="range" id="range"></div>
+          <div class="real"><small>Realistic budget including extra takes and complex shots</small><b id="realP">—</b><small>We confirm the exact figure after the brief and test generations</small></div>
+          <div class="facts">
+            <div><b id="fDur">—</b><small>runtime</small></div>
+            <div><b id="fDays">—</b><small>working days</small></div>
+            <div><b id="fGens">—</b><small>AI generations</small></div>
+            <div><b id="fMin">—</b><small>per minute</small></div>
+          </div>
+          <div class="bars" id="bars"><i class="c-pre"></i><i class="c-shoot"></i><i class="c-gen"></i><i class="c-post"></i><i class="c-mgmt"></i></div>
+          <div class="legend" id="legend"></div>
+          <details class="detail">
+            <summary>Detailed estimate</summary>
+            <div class="tbl" id="tbl"></div>
+          </details>
+          <div class="must"><b>Don't forget to copy the brief</b><p>The brief is not sent automatically. Without it we cannot see your answers or the estimate.</p><ol><li>Click "Copy brief and estimate"</li><li>Paste the text into a message to us</li><li>Send it</li></ol></div>
+          <button type="button" class="btn btn-a" id="copyBtn">Copy brief and estimate</button>
+          <div class="copied" id="copied" role="status"></div>
+          <textarea class="sr" id="copyArea" aria-hidden="true" tabindex="-1"></textarea>
+          <p class="note">This is the minimum calculation: it allows the smallest number of takes at which a scene can be produced at all. The real budget is usually closer to the upper figure. We lock the exact estimate after a call and an approved brief. Payment 50% before the start and 50% on delivery.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="how" aria-labelledby="howH">
+    <h2 id="howH">How the price adds up</h2>
+    <div class="stages">
+      <div class="stg"><h3><i class="c-pre"></i>Pre-production</h3><div class="pc">15–40% of the budget, more on short videos</div><p>The idea, the script, the style, the development of characters and locations. Quality is built here: without this work the model produces random images, not your film.</p></div>
+      <div class="stg"><h3><i class="c-gen"></i>Generation</h3><div class="pc">25–35% of the budget</div><p>The model generates video in 15-second segments. Every segment takes a minimum of 12 takes, and complex scenes take 30–40 — we pick the best of them. We pay both for credits and for the operator's hours.</p></div>
+      <div class="stg"><h3><i class="c-post"></i>Post-production</h3><div class="pc">25–35% of the budget</div><p>Editing, fixing artifacts (extra fingers, "melting" faces), color grading, sound, graphics. This is what turns a set of clips into a film.</p></div>
+      <div class="stg"><h3><i class="c-mgmt"></i>Production management</h3><div class="pc">10–20% of the budget</div><p>Communication, deadlines, two rounds of revisions and a re-generation reserve — insurance against the unpredictability of AI, so the price does not grow mid-project.</p></div>
+    </div>
+  </section>
+
+  <section class="faq" aria-labelledby="faqH">
+    <h2 id="faqH">Frequently asked questions</h2>
+    <details><summary>Why is it so expensive if the model makes the video?</summary><p>The model is a tool, like a camera. A camera also "shoots by itself", but a crew makes the film. Generation is about a third of the budget. The rest is the script, character development, selecting from hundreds of takes, manual polishing and sound. For comparison: a minute of traditional advertising production in 2026 costs from $1&nbsp;500 to $10&nbsp;000 and above, and an agency project averages more than $40&nbsp;000.</p></details>
+    <details><summary>What is a "take" and why are there so many?</summary><p>The model redraws every frame from scratch and each time slightly differently. In one take the character's face melts, in another the camera jerks, in a third everything is perfect. We generate several variants of every segment and pick the best one. The calculator allows a minimum — 12 takes per segment for any format. In real work a single segment often takes 25–40 takes, especially with a character speaking, your product or action on screen. That is why the calculator figure is a lower bound, and the realistic budget is shown next to it.</p></details>
+    <details><summary>How does native 4K differ from an upscale?</summary><p>With native 4K the model draws every frame in 4K from the start, so fine details (hair, fabric, text in the distance) are genuinely resolved. With an upscale we generate at 1080p and enlarge it with a dedicated program (Topaz): it reconstructs the details, but only approximately. From 1080p to 4K the upscale works well, and on a phone or laptop screen the difference is almost invisible. On TV, in a cinema and on large LED walls native 4K is noticeably cleaner. Native generation costs 2.5 times more per take, and there are at least 12 takes per segment, so an upscale is a reasonable compromise for most tasks.</p></details>
+    <details><summary>What is included in a revision round?</summary><p>One round is one consolidated list of comments from you: editing, color, sound, replacing individual shots. Two rounds are included. If the idea itself changes after the script is approved, or new scenes appear, that is new work and is priced separately.</p></details>
+    <details><summary>Can it be cheaper?</summary><p>Yes — simplify whatever affects the price the most: fewer characters, fewer complex scenes, the "Advertising" level instead of "Cinema", 1080p instead of 4K. The calculator will show the difference immediately. For large projects we start with a pilot — a short fragment so you can see the style before committing to the full budget.</p></details>
+    <details><summary>Who owns the rights to the video?</summary><p>After full payment, you do, within the selected platforms. For TV, outdoor advertising and theatrical release the rights are broader, which is why the price is higher.</p></details>
+  </section>
+</main>
+
+<footer><div class="wrap"><span id="sig">Prices in USD, indicative as of September 2026.</span></div></footer>
+
+<div class="mbar" aria-hidden="true"><div><small>Minimum · copy the brief in the estimate</small><b id="mPrice">—</b></div><a href="#estimate">Brief and estimate</a></div>
+<script>// ===== Pricing engine (shared by page + tests) =====
+let CFG = {
+  faceDay: 900, faceStudioDay: 400, shootDay: 2500, // hybrid: capture shift, shoot day (starting from)
+  upSetup: 80, upPerMin: 130, upLicense: 70, // upscale: model tests, $/min of finished video, Topaz Pro license per project
+  cgiRate: 85,         // $/hour, external CGI/3D specialist
+  rate: 60,            // $/hour, team rate
+  creditUSD: 200/6000, // Higgsfield: ~$200 for 6000 credits
+  credits: {"1080": 135, "4k": 330},
+  unitSec: 15,         // one generation = 15 sec
+  toolMarkup: 1.2,     // payment fees + buffer
+  mgmt: 0.12,          // production management
+  reserve: 0.10        // re-generation reserve
+};
+const TIERS = {
+  social:   {label:"Social media",   hours:1.0, attempts:12,  perMinFloor:350},
+  commerce: {label:"Advertising",    hours:1.0,  attempts:12,  perMinFloor:1200},
+  cinema:   {label:"Cinema-level",   hours:1.15, attempts:12, perMinFloor:2000}
+};
+// Complex scenes: a = +to generation attempts, p = +to post-production, h = fixed prep hours
+const COMPLEX = {
+  consistency:{a:.15,p:.10,h:0},
+  dialogue:   {a:.35,p:.20,h:2},
+  product:    {a:.30,p:.30,h:4},
+  text:       {a:.20,p:.25,h:1},
+  action:     {a:.40,p:.20,h:1},
+  crowd:      {a:.25,p:.15,h:1},
+  vfx:        {a:.35,p:.35,h:2},
+  hands:      {a:.25,p:.15,h:0},
+  creatures:  {a:.25,p:.15,h:3},
+  worlds:     {a:.20,p:.15,h:3},
+  realperson: {a:.25,p:.15,h:6},
+  hybrid:     {a:.10,p:.50,h:4},
+  location:   {a:.20,p:.10,h:2},
+  motion:     {a:.00,p:.40,h:3},
+  render:     {a:.50,p:.60,h:8},
+  camera:     {a:.40,p:.20,h:3}
+};
+const SHARE = {few:0.25, half:0.55, most:0.9};
+
+function estimate(s){
+  const c = Object.assign({}, CFG, s.cfg||{});
+  const T = TIERS[s.tier];
+  const sec = s.duration, min = sec/60;
+  // economies of scale for long formats
+  const scale = min<=3 ? 1 : min<=10 ? 0.82 : 0.7;
+  const durUnits = Math.max(1, Math.ceil(sec / c.unitSec));
+  const scenes = Math.max(1, s.scenes||1);
+  // one 15-sec Seedance take holds ~2 short scenes; many scenes = more segments
+  const units = Math.max(durUnits, Math.ceil(scenes/2));
+  // approvals: at the production's discretion / key points / every element
+  const AP = {trust:0.75, key:1, full:1.6}[s.approval||"key"];
+  const apNote = {trust:"at the production's discretion", key:"key decisions approved", full:"every element approved in detail"}[s.approval||"key"];
+  // complexity
+  let sa=0, sp=0, sh=0;
+  (s.complex||[]).forEach(k=>{const x=COMPLEX[k]; if(x){sa+=x.a; sp+=x.p; sh+=x.h;}});
+  const share = (s.complex&&s.complex.length) ? SHARE[s.share||"few"] : 0;
+  const attMult = 1 + sa*share;
+  const postMult = 1 + sp*share;
+  const attempts = T.attempts * attMult;
+  const H = T.hours;
+  const L = []; // lines
+  const add=(stage,name,note,hours,cost)=>{ L.push({stage,name,note,hours:hours||0,cost:Math.round(cost)}); };
+  const lab = h => h*c.rate;
+
+  // 1. PRE
+  let h;
+  h = (1 + 0.5*min*scale)*H; add("pre","Brief and concept","call, scope review, idea", h, lab(h));
+  // development: what the client arrives with
+  const src = {write:"none",adapt:"idea"}[s.script]||s.script||"idea";
+  const dev = {none:1, idea:0.8, treatment:0.4, ready:0}[src];
+  if(s.purpose==="trailer"){
+    if(dev>0){ h=(6+2*min*scale)*H*AP*dev; add("pre","Film concept","world, story, characters — we invent the foundation of a film that does not exist yet; "+apNote,h,lab(h)); }
+    h=(2+2*min*scale)*H; add("pre","Trailer script", src==="ready"?"a cut-down trailer script based on your film script":"structure, key scenes, voice-over and titles for the trailer",h,lab(h));
+  } else {
+    if(s.purpose==="ip"){ h=(8+0.4*min*scale)*H*AP*(src==="ready"?0.5:1); add("pre","Project bible","world, characters and their arcs, tone, visual language, season plan; "+apNote,h,lab(h)); }
+    if(src==="none"){ h=(2+1*min*scale)*H*AP; add("pre","Idea and concept","we invent the story from scratch, several options to choose from",h,lab(h)); }
+    if(src==="idea"){ h=(1+0.8*min*scale)*H*AP; add("pre","Idea development","logline → synopsis → treatment",h,lab(h)); }
+    if(src!=="ready"){ h=(1+2.5*min*scale)*H; add("pre","Script","writing, 2 rounds of revisions",h,lab(h)); }
+    else { h=(0.5+0.6*min*scale)*H; add("pre","Script adaptation","breaking your script down for AI staging",h,lab(h)); }
+  }
+  h = (1+0.4*min*scale)*H*AP; add("pre","Moodboard and style","references, style frames, visual approval",h,lab(h));
+  if(scenes>durUnits*2){ h=0.6*(scenes-durUnits*2)*H; add("pre","Scene staging ×"+scenes,"mise-en-scène, angles and a prompt for every scene",h,lab(h)); }
+  h = (0.5*units*scale)*H; add("pre","Shot list and prompts","breakdown into "+units+" segments of 15 sec",h,lab(h));
+  if(s.characters>0){ h=2.5*s.characters*H*AP; add("pre","Characters ×"+s.characters,"concept, reference sheets, consistency test; "+apNote,h,lab(h)); }
+  if(s.locations>0){ h=1.2*s.locations*H*AP; add("pre","Locations ×"+s.locations,"concept, camera angles, lighting; "+apNote,h,lab(h)); }
+  if(s.costumes>0){ h=2*s.costumes*H*AP; add("pre","Costumes and looks ×"+s.costumes,"design, fabric, details, locked to the character; "+apNote,h,lab(h)); }
+  // Animation: style development
+  if(s.purpose==="anim"){
+    if((s.animStyle||"ours")==="ours"){ h=(10+1*min*scale)*H*AP; add("pre","Animation style development","visual language: technique, palette, textures, how the characters move; style frames for approval; "+apNote,h,lab(h)); }
+    else { h=(3+0.3*min*scale)*H; add("pre","Style adaptation from reference","we carry your visual style into the AI pipeline, test frames",h,lab(h)); }
+  }
+  // Hybrid production: real footage
+  const hy = s.hybrid||"none", days=Math.max(1,s.shootDays||1);
+  if(hy==="client"){
+    h=2; add("shoot","Shooting brief","what to shoot and how: angles, lighting, background, so the footage fits an AI frame",h,lab(h));
+  }
+  if(hy==="facecap"){
+    h=2+1*days; add("shoot","Capture preparation","a face shooting plan for every scene, equipment test, brief for the performer",h,lab(h));
+    add("shoot","Specialist and equipment, shifts: "+days,"an 8–10 hour shift: capture operator, helmet camera or tracking system, lighting for the face; from",0,c.faceDay*days);
+    if(s.faceStudio!==false) add("shoot","Studio rental, shifts: "+days,"a small studio with controlled light and silence; from, depends on the city",0,c.faceStudioDay*days);
+    h=(2+4*min*scale)*H; add("shoot","Facial performance transfer","processing the recording, lip sync, blending the performance with the AI frame",h,lab(h));
+  }
+  if(hy==="shoot"){
+    h=4+2*days; add("shoot","Shoot preparation","studio, crew, props, storyboard for AI",h,lab(h));
+    add("shoot","Shoot day ×"+days,"a studio with a green screen, operator, lighting, basic props; from — the total depends on the city, studio, crew and props",0,c.shootDay*days);
+  }
+  if(hy!=="none"){ h=(1.5+3*min*scale)*H; add("post","Live-action integration","keying, matching light, camera and grain with the AI generation",h,lab(h)); }
+  // CGI specialist: exact match to renders / 3D
+  if((s.complex||[]).includes("render")){
+    const cgiScenes = Math.max(1, Math.ceil(scenes*(SHARE[s.share||"few"]||0.25)));
+    h = 12 + 8*cgiScenes; add("post","CGI / 3D specialist","a dedicated specialist: matching your renders, 3D backplates, compositing; scenes: "+cgiScenes, h, h*c.cgiRate);
+    h = (4 + 2*cgiScenes)*H*AP; add("pre","Preparation from renders","reading the 3D renders and layouts, angle references, match tests",h,lab(h));
+  }
+  if(sh>0){ h=sh*H*Math.min(1,0.5+min*0.25); add("pre","Complex scene preparation","tests and assets for the flagged scenes",h,lab(h)); }
+
+  // 2. GENERATION
+  const gens = Math.ceil(units*attempts);
+  const cr = c.credits[s.res==="4k"?"4k":"1080"];
+  const genCost = gens*cr*c.creditUSD*c.toolMarkup;
+  add("gen","Video generation (Seedance)", gens+" generations: "+units+" segments × ~"+attempts.toFixed(1)+" takes, "+(s.res==="4k"?"native 4K":"1080p"),0,genCost);
+  const imgCost = (15 + units*1.5)*c.toolMarkup;
+  add("gen","Image generation","key frames, character and location references",0,imgCost);
+  h = (1*units*attMult*scale)*H; add("gen","AI operator work","prompting, running takes, picking the best",h,lab(h));
+
+  // 3. POST
+  h=(0.7+2.2*min*scale)*H; add("post","Editing","assembly, pacing, transitions",h,lab(h));
+  h=(0.4*units*postMult*scale)*H; add("post","Cleanup and compositing","fixing AI artifacts, polishing frames",h,lab(h));
+  h=(0.5+1*min*scale)*H; add("post","Color grading","a single look across the whole video",h,lab(h));
+  // sound
+  if(s.sound==="basic"){ h=(0.5+0.8*min*scale); add("post","Sound design","basic effects and ambience",h,lab(h)); }
+  if(s.sound==="full"){ h=(0.5+2*min*scale)*H; add("post","Full sound design","detailed effects, mixing",h,lab(h)); }
+  if(s.music==="stock"){ const n=Math.max(1,Math.ceil(min/3)); add("post","Music (stock)",n+" licensed track(s)",0.5,n*45+lab(0.5)); }
+  if(s.music==="ai"){ h=1+0.5*min*scale; add("post","Music (AI-generated)","generation and fitting to the edit",h,lab(h)+30); }
+  if(s.music==="composer"){ add("post","Music (composer)","an original track scored to picture",0,350+280*min*scale); }
+  if(s.voice==="ai"){ h=1+0.6*min*scale; add("post","Voice-over (AI voice)","ElevenLabs, voice selection, intonation",h,lab(h)+30); }
+  if(s.voice==="actor"){ add("post","Voice-over (human narrator)","professional narrator, recording",1,250+120*min*scale+lab(1)); }
+  if(s.titles==="simple"){ h=1+0.3*min*scale; add("post","Titles and logo","simple on-screen text, packshot",h,lab(h)); }
+  if(s.titles==="motion"){ h=(3+3*min*scale)*H; add("post","Motion design","animated graphics, infographics",h,lab(h)); }
+  if(s.subs){ h=0.5+0.4*min*scale; add("post","Subtitles","",h,lab(h)); }
+  h=0.5+0.2*min; add("post","Final render and QC","master file, quality check",h,lab(h));
+  if(s.res==="4k_up"){ const v = c.upSetup + c.upPerMin*min*scale + c.upLicense; add("post","Upscale to 4K (Topaz)","choosing a model for the footage, 1080p → 4K render, artifact check, license",0,v); }
+  const postSum = L.filter(x=>x.stage==="post").reduce((a,b)=>a+b.cost,0);
+  if(s.formats>0){ const v=s.formats*(0.12*postSum + 0.2*genCost); add("post","Extra formats ×"+s.formats,"9:16 / 1:1 / 4:5 — reframing and extra generation",0,v); }
+  if(s.langs>0){ const v=s.langs*(150+60*min*scale + ((s.complex||[]).includes("dialogue")?0.25*genCost:0)); add("post","Language versions ×"+s.langs,"translation, voice-over"+((s.complex||[]).includes("dialogue")?", lip sync":""),0,v); }
+
+  // extra revisions
+  const sub = L.reduce((a,b)=>a+b.cost,0);
+  if(s.revisions>2){ const v=(s.revisions-2)*0.08*sub; add("mgmt","Extra revision rounds ×"+(s.revisions-2),"beyond the 2 included",0,v); }
+  const base = L.reduce((a,b)=>a+b.cost,0);
+  add("mgmt","Production management","communication, schedule control, delivery",0,base*c.mgmt);
+  add("mgmt","Re-generation reserve","AI is unpredictable: insurance against extra takes",0,base*c.reserve);
+
+  let total = L.reduce((a,b)=>a+b.cost,0);
+  const mods=[];
+  const usage={web:1, ads:1.15, tv:1.35}[s.usage||"web"];
+  if(usage>1) mods.push({name:"Rights: "+(s.usage==="tv"?"TV / outdoor / cinema":"paid advertising"),k:usage});
+  const rush={normal:1, fast:1.3, urgent:1.6}[s.rush||"normal"];
+  if(rush>1) mods.push({name:s.rush==="urgent"?"Rush":"Accelerated timeline",k:rush});
+  mods.forEach(m=>{ m.cost=Math.round(total*(m.k-1)); });
+  total = total*usage*rush;
+  // floor: never below the market minimum per minute for the level
+  const floor = Math.max(T.perMinFloor*Math.max(min,0.5)*scale, 300);
+  const floored = total<floor;
+  if(floored) total=floor;
+  total=Math.round(total/10)*10;
+  const hours = Math.round(L.reduce((a,b)=>a+b.hours,0));
+  return {lines:L, mods, total, low:total, high:total, real:Math.round(total*({social:1.3,commerce:1.6,cinema:1.8}[s.tier])/50)*50,
+    perMin: Math.round(total/Math.max(min,0.25)), hours, gens, units, attempts, floored, scenes,
+    days: Math.max(3, Math.round(hours/6/(s.rush==="urgent"?1.8:s.rush==="fast"?1.35:1)))};
+}
+
+const $=s=>document.querySelector(s);
+const DATA={
+ purpose:[["ad","Advertising","commerce"],["brand","Brand film","cinema"],["clip","Music video","cinema"],["social","Social media","commerce"],["explainer","Explainer video","commerce"],["film","Film / series","cinema"],["trailer","Film trailer","cinema"],["anim","Animation / cartoon","cinema"],["gift","Greeting / gift","cinema"],["ip","IP development / pilot","cinema"]],
+ dur:[[15,"15 sec"],[30,"30 sec"],[45,"45 sec"],[60,"1 min"],[120,"2 min"],[180,"3 min"],[300,"5 min"],[900,"15 min"]],
+ tier:[["commerce","Advertising and social","Clean imagery for brands and paid media. Every frame checked.","minimum 12 takes per segment, 20–30 in reality"],
+       ["cinema","Cinema","Cinematic lighting, dramaturgy, not a single artifact. Festivals, brand films, TV.","minimum 12 takes per segment, 25–40 in reality, plus manual polish"]],
+ res:[["1080","Full HD 1080p","The standard for the web and social media.",""],
+   ["4k_up","4K via upscale","We generate at 1080p, pick the best takes and enlarge them to 4K in Topaz. Good for YouTube, websites and most screens.","+ ~$130 per minute of video"],
+   ["4k","Native 4K","Every take is generated in 4K from the start. Maximum detail: hair, fabric, small text. For TV, cinema and large LED walls.","generation costs 2.5× more"]],
+ script:[["none","No idea yet","We invent the story from scratch and offer several options.","concept + script"],
+   ["idea","I have an idea","We develop it: logline, synopsis, treatment, then the script.","development + script"],
+   ["treatment","I have a synopsis or treatment","The story is already written and we write the script from it.","script"],
+   ["ready","Finished script","We break it down for AI staging. For a trailer — we write the trailer script from your film.","adaptation only"]],
+ music:[["none","Not needed"],["stock","Licensed from stock"],["ai","AI-generated"],["composer","Original from a composer"]],
+ sound:[["none","Not needed"],["basic","Basic"],["full","Full sound design"]],
+ voice:[["none","None"],["ai","AI voice"],["actor","Human narrator"]],
+ titles:[["none","No on-screen text"],["simple","Titles and logo"],["motion","Motion graphics"]],
+ approval:[["trust","Leave it to the production","You set the direction, and we develop the characters, locations and costumes ourselves. Faster and cheaper.","−25% on development"],
+   ["key","We approve the key points","You approve the style and the main characters, we handle the rest.","base price"],
+   ["full","We approve every element","Every character, costume and location is approved separately.","+60% on development"]],
+ animStyle:[["ours","Develop the style from scratch","We invent the visual language of the animation: the technique, palette, textures, character and costume style.","slower and more expensive"],
+   ["ref","I have a style reference","You show us the style you want and we carry it over. No guesswork.","faster"]],
+ hybrid:[["none","Fully AI","Everything is generated, there is no live footage.",""],
+   ["client","You send us the footage","You shoot it yourself following our brief: angles, lighting, background. We build the footage into the AI frame.","+ integration"],
+   ["facecap","Facial performance capture","Our specialist films the performer's face with tracking markers. For realistic lip sync and emotion.","shift from $900 + studio from $400"],
+   ["shoot","We arrange the shoot","A full shoot day: green screen, operator, lighting, props.","day from $2,500"]],
+ usage:[["web","Web and social media","Organic, website, your own channels.",""],["ads","Paid advertising","Targeting, YouTube, marketplaces.","+15% to the price"],["tv","TV, outdoor, cinema","Broadcast, city screens, movie theaters.","+35% to the price"]],
+ rush:[["normal","Standard"],["fast","Faster · +30%"],["urgent","Rush · +60%"]],
+ share:[["few","A few shots, up to 25%"],["half","About half"],["most","Almost the whole video"]],
+ complex:[
+  ["consistency","One character across many scenes","The character looks the same in every shot: face, hair, clothing.","A woman appears through the whole video in 8 different scenes","AI tends to \u201Cchange\u201D the face from shot to shot. It needs reference sheets, a trained model and more takes."],
+  ["dialogue","Characters speak on camera","Lip sync with speech, facial expression, close-ups.","An expert talks about the product, a dialogue between two characters","Lip sync is one of the most demanding tasks: the mouth, the teeth and the expression break easily."],
+  ["product","Your product on screen","Exact shape, color, logo and label — identical to the real thing.","A perfume bottle, packaging, a watch, sneakers","AI \u201Cinvents\u201D details: letters, proportions. It needs product photos from several angles and manual frame retouching."],
+  ["text","Text inside the frame","Signs, phone screens, newspapers, license plates.","The character looks at a phone showing your app","AI still mixes up letters. Shots like these are often retouched by hand."],
+  ["action","Dynamics and action","Fights, chases, sports, dancing, falls, fast camera moves.","A snowboarder jumps off a kicker","The faster the movement, the more often anatomy and physics break. Almost twice as many takes."],
+  ["crowd","Crowds","A crowd, a concert, a busy street, a stadium.","The character walks through a festival crowd","Anyone in the crowd can \u201Cbreak\u201D: faces, hands. The frames need cleanup."],
+  ["vfx","Visual effects","Fire, explosions, water, smoke, magic, particles, transformations.","A bottle shatters into droplets and reassembles","The effect must look convincing and match between shots — tests and compositing."],
+  ["hands","Hands and small actions","The character holds an object, pours, writes, opens packaging.","A barista pours latte art","Hands are a weak spot for AI models: extra fingers, objects passing through the palm."],
+  ["creatures","Animals and creatures","A pet character, a mascot, fantastic beings.","The brand's fox mascot guides the viewer through the story","It needs character design and anatomy control in motion."],
+  ["worlds","Fantastic worlds","Sci-fi, fantasy, the future, architecture that does not exist.","A city of the future on the clouds","The world must be invented and held in a single style — a separate concept and more takes."],
+  ["realperson","A real person on screen","A digital double of a founder, an ambassador or an actor, made from photos.","The company founder as the hero of the video","It needs photos of the person, model training and consent to use the likeness. We check the resemblance in every shot."],
+  ["location","A specific real place","A recognizable street, your store or office, a particular city.","Your coffee shop on a specific street","AI does not know what your office looks like. It needs photos and accuracy control."],
+  ["render","An exact match to renders or a mock-up","The image must match your 3D renders: a building, an interior, a layout, materials.","A premium residential complex based on the architect's renders","AI does not reproduce someone else's design one to one. We bring in a dedicated CGI/3D specialist: matching the renders, 3D backplates, compositing of every frame. This is the most expensive line in the estimate."],
+  ["camera","A prescribed camera move","The camera must follow a specific path: a fly-around of a building, a walkthrough of an interior, a drone shot.","A fly-around of a residential complex ending on the view from a window","AI chooses the camera motion itself. To reproduce a prescribed move you need 3D previews, reference frames and many takes."],
+  ["motion","Infographics and 3D graphics","Charts, diagrams, animated interfaces, a logo in 3D.","Growth numbers slide in over the frame","This is not done by generation but by hand in motion design software."]
+ ]
+};
+const DEF={purpose:"ad",duration:30,tier:"commerce",res:"1080",script:"idea",scenes:3,hybrid:"none",shootDays:1,faceStudio:true,animStyle:"ours",characters:1,locations:2,costumes:0,approval:"key",complex:[],share:"few",music:"stock",sound:"basic",voice:"none",titles:"simple",subs:false,usage:"web",rush:"normal",formats:0,langs:0,revisions:2,idea:"",refs:"",who:"",contact:"",deadline:""};
+let S=Object.assign({},DEF);
+try{const x=JSON.parse(localStorage.getItem("cc-brief")||"null"); if(x) S=Object.assign({},DEF,x);}catch(e){}
+if(S.tier==="social") S.tier="commerce"; S.complex=(S.complex||[]).filter(k=>k!=="hybrid"); if(!["1080","4k_up","4k"].includes(S.res)) S.res="1080"; if(S.script==="write") S.script="none"; if(S.script==="adapt") S.script="idea";
+try{const x=null&&JSON.parse(localStorage.getItem("cc-studio")||"null"); if(x){ Object.assign(CFG,x.cfg||{}); for(const k in (x.tiers||{})) Object.assign(TIERS[k],x.tiers[k]); }}catch(e){}
+
+const save=()=>{try{localStorage.setItem("cc-brief",JSON.stringify(S));}catch(e){}};
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function chips(id,list,key,numeric){
+  const el=document.getElementById(id);
+  el.innerHTML=list.map(([v,l])=>`<label class="chip"><input type="radio" name="${id}" value="${v}"><span>${esc(l)}</span></label>`).join("");
+  el.addEventListener("change",e=>{ S[key]=numeric?+e.target.value:e.target.value; if(key==="purpose"){const p=DATA.purpose.find(x=>x[0]===S.purpose); S.tier=p[2]; if(S.purpose==="explainer"&&S.titles!=="motion") S.titles="motion"; if(S.purpose==="social"){S.music="stock";} if(S.purpose==="trailer"){Object.assign(S,{duration:120,scenes:20,characters:4,locations:6,costumes:6,sound:"full"});} if(S.purpose==="gift"){Object.assign(S,{duration:60,scenes:5,characters:Math.max(S.characters,1),locations:3,costumes:2,sound:"full",share:"most"}); ["realperson","consistency"].forEach(k=>{if(!S.complex.includes(k)) S.complex.push(k);});} if(S.purpose==="anim"){Object.assign(S,{characters:Math.max(S.characters,2),costumes:Math.max(S.costumes,2)});} if(S.purpose==="ip"){Object.assign(S,{duration:900,scenes:40,characters:10,locations:10,costumes:12,sound:"full",music:"composer"});} } update(true); });
+}
+function opts(id,list,key){
+  const el=document.getElementById(id);
+  el.innerHTML=list.map(([v,b,s,em])=>`<label class="opt"><input type="radio" name="${id}" value="${v}"><b>${esc(b)}</b><small>${esc(s)}</small>${em?`<em>${esc(em)}</em>`:""}</label>`).join("");
+  el.addEventListener("change",e=>{S[key]=e.target.value; update(true);});
+}
+chips("purpose",DATA.purpose,"purpose");
+chips("durChips",DATA.dur,"duration",true);
+opts("tiers",DATA.tier,"tier"); opts("res",DATA.res,"res"); opts("script",DATA.script,"script"); opts("usage",DATA.usage,"usage"); opts("approval",DATA.approval,"approval"); opts("animStyle",DATA.animStyle,"animStyle"); opts("hybrid",DATA.hybrid,"hybrid");
+["music","sound","voice","titles","rush","share"].forEach(k=>chips(k,DATA[k],k));
+
+// complex cards
+const lvl=k=>{const x=COMPLEX[k],v=x.a+x.p; return v<=.35?1:v<=.55?2:3;};
+$("#complex").innerHTML=DATA.complex.map(([k,t,d,ex,why])=>{const n=lvl(k);return `<label class="cxc"><input type="checkbox" value="${k}"><div><b>${esc(t)}<span class="lvl" title="Impact on price: ${n} of 3" aria-label="Impact on price ${n} of 3">${[1,2,3].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</span></b><p>${esc(d)}</p><div class="ex">Example: ${esc(ex)}</div><div class="why">Why it costs more: ${esc(why)}</div></div></label>`}).join("");
+$("#complex").addEventListener("change",()=>{S.complex=[...document.querySelectorAll("#complex input:checked")].map(i=>i.value); update(true);});
+
+// steppers
+document.querySelectorAll(".stepper").forEach(st=>{
+  const k=st.dataset.key,mn=+(st.dataset.min||0),mx=+st.dataset.max; const [m,p]=st.querySelectorAll("button");
+  m.onclick=()=>{S[k]=Math.max(mn,S[k]-1);update(true)}; p.onclick=()=>{S[k]=Math.min(mx,S[k]+1);update(true)};
+});
+// duration inputs
+const setDur=()=>{const m=Math.max(0,+$("#dMin").value||0), s=Math.max(0,Math.min(59,+$("#dSec").value||0)); S.duration=Math.max(5,Math.min(3600,m*60+s)); update(true,true);};
+$("#dMin").addEventListener("input",setDur); $("#dSec").addEventListener("input",setDur);
+$("#subs").addEventListener("change",e=>{S.subs=e.target.checked;update(true)});
+$("#faceStudio").addEventListener("change",e=>{S.faceStudio=e.target.checked;update(true)});
+["idea","refs","who","contact","deadline"].forEach(k=>$("#"+k).addEventListener("input",e=>{S[k]=e.target.value;save();}));
+
+const money=v=>"$"+Math.round(v).toLocaleString("en-US");
+const fmtDur=s=>{const m=Math.floor(s/60),x=s%60; return m? (x? `${m} min ${x} s`:`${m} min`) : `${x} sec`;};
+
+let lastTotal=null, R=null;
+function sync(skipDur){
+  const setR=(id,v)=>{const i=document.querySelector(`#${id} input[value="${v}"]`); document.querySelectorAll(`#${id} input`).forEach(x=>x.checked=false); if(i) i.checked=true;};
+  setR("purpose",S.purpose); setR("durChips",S.duration); setR("tiers",S.tier); setR("res",S.res); setR("script",S.script); setR("usage",S.usage); setR("approval",S.approval); setR("animStyle",S.animStyle); setR("hybrid",S.hybrid);
+  $("#animNote").style.display=S.purpose==="anim"?"block":"none"; $("#giftNote").style.display=S.purpose==="gift"?"block":"none"; $("#clipNote").style.display=S.purpose==="clip"?"block":"none"; $("#daysBox").style.display=(S.hybrid==="facecap"||S.hybrid==="shoot")?"block":"none"; $("#daysLbl").textContent=S.hybrid==="facecap"?"Capture shifts (a shift is 8–10 hours)":"Shoot days";
+  $("#faceStudioBox").style.display=S.hybrid==="facecap"?"flex":"none"; $("#faceStudio").checked=S.faceStudio!==false;
+  $("#trailerNote").style.display=S.purpose==="trailer"?"block":"none"; $("#ipNote").style.display=S.purpose==="ip"?"block":"none";
+  ["music","sound","voice","titles","rush","share"].forEach(k=>setR(k,S[k]));
+  document.querySelectorAll("#complex input").forEach(i=>i.checked=S.complex.includes(i.value));
+  document.querySelectorAll(".stepper").forEach(st=>st.querySelector("output").textContent=S[st.dataset.key]);
+  if(!skipDur){ $("#dMin").value=Math.floor(S.duration/60); $("#dSec").value=S.duration%60; }
+  $("#durOut").textContent=fmtDur(S.duration);
+  $("#subs").checked=S.subs;
+  $("#shareBox").classList.toggle("show",S.complex.length>0);
+  ["idea","refs","who","contact","deadline"].forEach(k=>{ if(document.activeElement!==$("#"+k)) $("#"+k).value=S[k]||""; });
+}
+const STG={pre:"Pre-production",shoot:"Live action",gen:"Generation",post:"Post-production",mgmt:"Production management"};
+function update(changed,skipDur){
+  sync(skipDur);
+  R=estimate(S);
+  $("#price").textContent=money(R.total); $("#mPrice").textContent=money(R.total);
+  $("#range").textContent="Lower bound: minimum takes, with no allowance for complex shots";
+  $("#realP").textContent=`${money(R.total)} – ${money(R.real)}`;
+  $("#fDur").textContent=fmtDur(S.duration); $("#fDays").textContent="~"+R.days; $("#fGens").textContent=R.gens; $("#fMin").textContent=money(R.perMin);
+  const sums={pre:0,shoot:0,gen:0,post:0,mgmt:0}; R.lines.forEach(l=>sums[l.stage]+=l.cost); const all=Object.values(sums).reduce((a,b)=>a+b,0)||1;
+  const bars=$("#bars").children; ["pre","shoot","gen","post","mgmt"].forEach((k,i)=>bars[i].style.flexGrow=sums[k]);
+  $("#legend").innerHTML=["pre","shoot","gen","post","mgmt"].filter(k=>k!=="shoot"||sums.shoot>0).map(k=>`<span><i class="c-${k}"></i>${STG[k]}<b>${Math.round(sums[k]/all*100)}%</b></span>`).join("");
+  let h="";
+  ["pre","shoot","gen","post","mgmt"].forEach(k=>{ const ls=R.lines.filter(l=>l.stage===k); if(!ls.length) return;
+    h+=`<div class="sg"><span>${STG[k]}</span><span>${money(sums[k])}</span></div>`;
+    h+=ls.map(l=>`<div class="ln"><span>${esc(l.name)}</span><b>${money(l.cost)}</b>${l.note?`<small>${esc(l.note)}${l.hours?` · ~${Math.round(l.hours*10)/10} h`:""}</small>`:""}</div>`).join(""); });
+  if(R.mods.length){ h+=`<div class="sg"><span>Surcharges</span><span></span></div>`+R.mods.map(m=>`<div class="ln"><span>${esc(m.name)}</span><b>+${money(m.cost)}</b><small>+${Math.round((m.k-1)*100)}%</small></div>`).join(""); }
+  if(R.floored) h+=`<div class="ln"><span>Minimum project cost</span><b></b><small>for the selected level</small></div>`;
+  h+=`<div class="tot"><span>Total</span><span>${money(R.total)}</span></div>`;
+  $("#tbl").innerHTML=h;
+  if(changed){ save(); if(lastTotal!==null&&lastTotal!==R.total){const c=$("#clap");c.classList.remove("snap");void c.offsetWidth;c.classList.add("snap");} }
+  lastTotal=R.total;
+}
+
+// brief text
+let copiedOnce=false;
+const lbl=(list,v)=>(list.find(x=>x[0]===v)||[,v])[1];
+function briefText(){
+  const L=[];
+  L.push("AI VIDEO BRIEF");
+  if(S.who) L.push("Client: "+S.who); if(S.contact) L.push("Contact: "+S.contact); if(S.deadline) L.push("Deadline: "+S.deadline);
+  L.push("");
+  L.push("Type: "+lbl(DATA.purpose,S.purpose)+" · "+fmtDur(S.duration));
+  L.push("Level: "+lbl(DATA.tier,S.tier)+" · "+lbl(DATA.res,S.res));
+  L.push("Source material: "+lbl(DATA.script,S.script)+" · scenes: "+S.scenes);
+  if(S.purpose==="anim") L.push("Animation style: "+lbl(DATA.animStyle,S.animStyle).toLowerCase());
+  L.push("Live action: "+lbl(DATA.hybrid,S.hybrid)+((S.hybrid==="facecap"||S.hybrid==="shoot")?" ×"+S.shootDays:"")+(S.hybrid==="facecap"?(S.faceStudio!==false?", studio rental":", own location"):""));
+  L.push("Development: characters — "+S.characters+", locations — "+S.locations+", costumes — "+S.costumes+" · "+lbl(DATA.approval,S.approval).toLowerCase());
+  L.push("Complex scenes: "+(S.complex.length? S.complex.map(k=>lbl(DATA.complex,k)).join(", ")+" ("+lbl(DATA.share,S.share)+")" : "none"));
+  L.push("Sound: music — "+lbl(DATA.music,S.music).toLowerCase()+", effects — "+lbl(DATA.sound,S.sound).toLowerCase()+", voice — "+lbl(DATA.voice,S.voice).toLowerCase());
+  L.push("Graphics: "+lbl(DATA.titles,S.titles).toLowerCase()+(S.subs?", subtitles":""));
+  L.push("Platforms: "+lbl(DATA.usage,S.usage)+" · timeline: "+lbl(DATA.rush,S.rush));
+  L.push("Extra formats: "+S.formats+" · language versions: "+S.langs+" · revision rounds: "+S.revisions);
+  if(S.idea) {L.push("");L.push("Idea: "+S.idea);} if(S.refs) L.push("References: "+S.refs);
+  L.push("");
+  L.push("MINIMUM ESTIMATE: "+money(R.total)+" · realistic budget: "+money(R.total)+" – "+money(R.real));
+  L.push("(based on the minimum number of takes; the exact estimate follows the brief)");
+  ["pre","shoot","gen","post","mgmt"].forEach(k=>{R.lines.filter(l=>l.stage===k).forEach(l=>L.push("  "+STG[k]+" · "+l.name+": "+money(l.cost)));});
+  R.mods.forEach(m=>L.push("  "+m.name+": +"+money(m.cost)));
+  L.push("Timeline: ~"+R.days+" working days · AI generations: "+R.gens);
+  return L.join("\n");
+}
+$("#copyBtn").onclick=async()=>{
+  const t=briefText(); let ok=false;
+  try{ await navigator.clipboard.writeText(t); ok=true; }catch(e){}
+  if(!ok){ const a=$("#copyArea"); a.value=t; a.select(); try{ok=document.execCommand("copy");}catch(e){} }
+  $("#copied").textContent= ok ? "Copied. Paste the brief into your message to us." : "Copying failed automatically — open the detailed estimate and copy it manually.";
+  if(ok){copiedOnce=true;}
+};
+
+// studio panel
+const SF=[["rate","Rate, $/hour",CFG,"rate",1],["creditUSD","$ per 1000 credits",CFG,"creditUSD",1000],["toolMarkup","Tools markup, ×",CFG,"toolMarkup",1],["mgmt","Production management, %",CFG,"mgmt",100],["reserve","Reserve, %",CFG,"reserve",100],
+ ["ca","Takes: Advertising",TIERS.commerce,"attempts",1],["ka","Takes: Cinema",TIERS.cinema,"attempts",1],
+ ["ch","Hours coefficient: Advertising",TIERS.commerce,"hours",1],["kh","Hours coefficient: Cinema",TIERS.cinema,"hours",1],["fd","Capture shift, $",CFG,"faceDay",1],["fs","Capture studio, $/shift",CFG,"faceStudioDay",1],["sd","Shoot day, $",CFG,"shootDay",1],["up","Upscale, $/min",CFG,"upPerMin",1],["cgi","CGI specialist, $/hour",CFG,"cgiRate",1],
+ ["c1","Credits 1080p / generation",CFG.credits,"1080",1],["c4","Credits 4K / generation",CFG.credits,"4k",1]];
+function studio(){
+  const box=$("#studio"); box.classList.add("show");
+  $("#studioFields").innerHTML=SF.map(([id,l,o,k,m])=>`<label>${l}<input type="number" step="any" id="st_${id}" value="${Math.round(o[k]*m*1000)/1000}"></label>`).join("")+`<label>&nbsp;<button type="button" id="stReset" class="btn btn-g" style="color:var(--ink);border-color:var(--line);margin:4px 0 0;padding:8px">Reset</button></label>`;
+  SF.forEach(([id,l,o,k,m])=>$("#st_"+id).addEventListener("input",e=>{const v=parseFloat(e.target.value); if(!isNaN(v)){o[k]=v/m; try{localStorage.setItem("cc-studio",JSON.stringify({cfg:{rate:CFG.rate,creditUSD:CFG.creditUSD,toolMarkup:CFG.toolMarkup,mgmt:CFG.mgmt,reserve:CFG.reserve,credits:CFG.credits},tiers:{social:{attempts:TIERS.social.attempts,hours:TIERS.social.hours},commerce:{attempts:TIERS.commerce.attempts,hours:TIERS.commerce.hours},cinema:{attempts:TIERS.cinema.attempts,hours:TIERS.cinema.hours}}}))}catch(e){} update(false);} }));
+  $("#stReset").onclick=()=>{try{localStorage.removeItem("cc-studio")}catch(e){} location.reload();};
+}
+
+update(false);
+</script>
+</body></html>
