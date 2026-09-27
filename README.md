@@ -40,6 +40,14 @@ line item for ten scenarios (defaults, native 4K cinema, IP preset, facial captu
 CGI render match, trailer preset, gift preset, minimal social clip, explainer). Use it as a
 reference whenever you change the engine.
 
+The same check can be run against the real page: `tools/check-states.cjs` loads 28 toggle states in
+headless Chrome and compares every rendered number, panel and estimate row with the reference
+engine, and fails on untranslated or broken text.
+
+```bash
+node tools/check-states.cjs index.html _source/engine-ru.cjs
+```
+
 ## Docs
 
 * [`docs/original-ru-content.md`](docs/original-ru-content.md) — a full structured breakdown of the
